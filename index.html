@@ -319,7 +319,7 @@
     transition: transform 0.3s, border-color 0.3s;
   }
   .countdown-card:hover { transform: translateY(-5px) scale(1.05); border-color: var(--gold-light); }
-  .countdown-num { font-family: var(--font-secondary); font-size: 3.8rem; font-weight: 400; color: var(--gold-light); line-height: 1; }
+  .countdown-num { display: inline-block; min-width: 3ch; font-family: var(--font-secondary); font-size: 3.8rem; font-weight: 400; color: var(--gold-light); line-height: 1; font-variant-numeric: tabular-nums; }
   .countdown-lbl { font-size: 0.6rem; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(255,255,255,0.55); margin-top: 0.4rem; }
 
   /* Number flip animation */
@@ -702,7 +702,7 @@
           <p>Tap to open</p>
         </div>
         <div class="invitation-back">
-          <img src="images/Compressed%20images/V%26A%20BACK%20PG.png" alt="Wedding invitation for Dr. S. Vishal and Dr. M. Aswini, including family names, reception and wedding timings, and venue">
+          <img src="images/Compressed%20images/V%26A%20BACK%20PG.png" alt="Wedding invitation for Dr. S. Vishal and Dr. M. Aswini, including family names, reception and wedding timings, and venue" loading="lazy" decoding="async">
         </div>
       </div>
     </div>
@@ -1130,7 +1130,7 @@
   let currentIndex = -1;
   let currentLayer = -1;
   let boundaryTimer = null;
-  let preloadStarted = false;
+  let preloadTimer = null;
 
   try {
     const savedStart = Number(window.localStorage.getItem(storageKey));
@@ -1163,39 +1163,43 @@
 
   function scheduleBoundary() {
     if (boundaryTimer !== null) window.clearTimeout(boundaryTimer);
+    if (preloadTimer !== null) window.clearTimeout(preloadTimer);
     if (!mobileQuery.matches) return;
     const elapsed = Math.max(0, Date.now() - rotationStartedAt);
     const untilNextBoundary = rotationInterval - (elapsed % rotationInterval);
+    const nextIndex = 1 - scheduledIndex(Date.now());
+    preloadTimer = window.setTimeout(function() {
+      preloadImage(nextIndex);
+    }, Math.max(0, untilNextBoundary - 60 * 1000));
     boundaryTimer = window.setTimeout(function() {
       showScheduledImage();
       scheduleBoundary();
     }, untilNextBoundary + 20);
   }
 
-  function preloadMobileImages() {
-    if (preloadStarted) return;
-    preloadStarted = true;
-    imageUrls.forEach(function(url, index) {
-      const image = new Image();
-      image.onload = function() {
-        preloadState[index] = true;
-        showScheduledImage();
-      };
-      image.onerror = function() {
-        preloadState[index] = false;
-      };
-      image.src = url;
-    });
+  function preloadImage(index) {
+    if (preloadState[index]) return;
+    const image = new Image();
+    image.onload = function() {
+      preloadState[index] = true;
+      showScheduledImage();
+    };
+    image.onerror = function() {
+      preloadState[index] = false;
+    };
+    image.src = imageUrls[index];
   }
 
   function syncMobileMode() {
     if (mobileQuery.matches) {
-      preloadMobileImages();
+      preloadImage(scheduledIndex(Date.now()));
       showScheduledImage();
       scheduleBoundary();
     } else {
       if (boundaryTimer !== null) window.clearTimeout(boundaryTimer);
+      if (preloadTimer !== null) window.clearTimeout(preloadTimer);
       boundaryTimer = null;
+      preloadTimer = null;
       hero.classList.remove('mobile-backgrounds-active');
     }
   }
