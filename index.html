@@ -198,6 +198,20 @@
   @media(max-width:600px) {
     #hero { background: #FFF8E7; }
   }
+  .hero-mobile-background {
+    position: absolute; inset: 0; z-index: 1; overflow: hidden; display: none;
+  }
+  .hero-mobile-background-layer {
+    position: absolute; inset: 0;
+    background-position: center center; background-size: cover; background-repeat: no-repeat;
+    opacity: 0; transition: opacity 2s ease;
+  }
+  .hero-mobile-background-layer.is-visible { opacity: 1; }
+  @media(max-width:767px) {
+    #hero.mobile-backgrounds-active { height: 100vh; height: 100svh; min-height: 100vh; overflow: hidden; }
+    #hero.mobile-backgrounds-active picture { display: none; }
+    #hero.mobile-backgrounds-active .hero-mobile-background { display: block; }
+  }
 
   .hero-content {
     position: relative; z-index: 2; text-align: center;
@@ -637,6 +651,10 @@
 
 <!-- HERO -->
 <div id="hero">
+  <div class="hero-mobile-background" id="hero-mobile-background" aria-hidden="true">
+    <div class="hero-mobile-background-layer"></div>
+    <div class="hero-mobile-background-layer"></div>
+  </div>
   <picture>
     <source media="(max-width: 600px)" srcset="images/Golden%20sunset%20temple%20wedding%20invitation%20(1).png">
     <img class="hero-invitation" src="images/Golden Temple Wedding Invitation.png" alt="Golden Temple wedding invitation for Dr. S. Vishal and Dr. M. Ashwini">
@@ -1081,6 +1099,104 @@
     }
   });
 
+})();
+</script>
+<script>
+(function() {
+  'use strict';
+
+  const hero = document.getElementById('hero');
+  const layers = Array.from(document.querySelectorAll('.hero-mobile-background-layer'));
+  if (!hero || layers.length !== 2 || !window.matchMedia) return;
+
+  const mobileQuery = window.matchMedia('(max-width: 767px)');
+  const rotationInterval = 30 * 60 * 1000;
+  const storageKey = 'vaMobileHeroRotationStartedAt';
+  const imageUrls = [
+    new URL('images/Soft champagne glow wedding invitation.png', document.baseURI).href,
+    new URL('images/Traditional Temple Wedding Invitation.png', document.baseURI).href
+  ];
+  const preloadState = [false, false];
+  let rotationStartedAt = Date.now();
+  let currentIndex = -1;
+  let currentLayer = -1;
+  let boundaryTimer = null;
+  let preloadStarted = false;
+
+  try {
+    const savedStart = Number(window.localStorage.getItem(storageKey));
+    if (Number.isFinite(savedStart) && savedStart > 0 && savedStart <= Date.now()) {
+      rotationStartedAt = savedStart;
+    } else {
+      window.localStorage.setItem(storageKey, String(rotationStartedAt));
+    }
+  } catch (error) { /* Keep this feature available if storage is blocked. */ }
+
+  function scheduledIndex(now) {
+    const elapsed = Math.max(0, now - rotationStartedAt);
+    return Math.floor(elapsed / rotationInterval) % imageUrls.length;
+  }
+
+  function showScheduledImage() {
+    if (!mobileQuery.matches) return;
+    const nextIndex = scheduledIndex(Date.now());
+    if (!preloadState[nextIndex] || nextIndex === currentIndex) return;
+
+    const nextLayer = currentLayer === 0 ? 1 : 0;
+    layers[nextLayer].style.backgroundImage = 'url("' + imageUrls[nextIndex] + '")';
+    void layers[nextLayer].offsetWidth;
+    layers[nextLayer].classList.add('is-visible');
+    if (currentLayer !== -1) layers[currentLayer].classList.remove('is-visible');
+    currentLayer = nextLayer;
+    currentIndex = nextIndex;
+    hero.classList.add('mobile-backgrounds-active');
+  }
+
+  function scheduleBoundary() {
+    if (boundaryTimer !== null) window.clearTimeout(boundaryTimer);
+    if (!mobileQuery.matches) return;
+    const elapsed = Math.max(0, Date.now() - rotationStartedAt);
+    const untilNextBoundary = rotationInterval - (elapsed % rotationInterval);
+    boundaryTimer = window.setTimeout(function() {
+      showScheduledImage();
+      scheduleBoundary();
+    }, untilNextBoundary + 20);
+  }
+
+  function preloadMobileImages() {
+    if (preloadStarted) return;
+    preloadStarted = true;
+    imageUrls.forEach(function(url, index) {
+      const image = new Image();
+      image.onload = function() {
+        preloadState[index] = true;
+        showScheduledImage();
+      };
+      image.onerror = function() {
+        preloadState[index] = false;
+      };
+      image.src = url;
+    });
+  }
+
+  function syncMobileMode() {
+    if (mobileQuery.matches) {
+      preloadMobileImages();
+      showScheduledImage();
+      scheduleBoundary();
+    } else {
+      if (boundaryTimer !== null) window.clearTimeout(boundaryTimer);
+      boundaryTimer = null;
+      hero.classList.remove('mobile-backgrounds-active');
+    }
+  }
+
+  if (typeof mobileQuery.addEventListener === 'function') {
+    mobileQuery.addEventListener('change', syncMobileMode);
+  } else if (typeof mobileQuery.addListener === 'function') {
+    mobileQuery.addListener(syncMobileMode);
+  }
+  syncMobileMode();
 })();
 </script>
 </body>
