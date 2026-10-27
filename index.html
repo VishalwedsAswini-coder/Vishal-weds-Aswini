@@ -55,8 +55,9 @@
   .envelope-wrapper {
     position: relative; width: 320px; height: 220px;
     perspective: 1000px; transform-style: preserve-3d; isolation: isolate;
-    transition: transform 0.35s ease;
+    transition: transform 0.35s ease; cursor: pointer;
   }
+  .envelope-wrapper:focus-visible { outline: 2px solid var(--gold-light); outline-offset: 8px; }
   .envelope-wrapper.opening { transform: translateY(-4px) scale(1.015); }
 
   .envelope-body {
@@ -606,7 +607,7 @@
 
 <!-- ENVELOPE INTRO -->
 <div id="envelope-intro">
-  <div class="envelope-wrapper" id="envelope">
+  <div class="envelope-wrapper" id="envelope" role="button" tabindex="0" aria-label="Open wedding invitation">
     <div class="envelope-body">
       <div class="envelope-card">
         <div class="envelope-card-names">The Wedding Invitation</div>
@@ -889,6 +890,13 @@
     }, 320);
   }
 
+  envelope.addEventListener('click', openInvitation);
+  envelope.addEventListener('keydown', function(event) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      openInvitation();
+    }
+  });
   enterBtn.addEventListener('click', openInvitation);
   window.addEventListener('pagehide', cleanupIntroSequence, { once: true });
 
